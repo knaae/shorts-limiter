@@ -6,6 +6,13 @@
 - 분석: Python + pandas + matplotlib
 - 라이선스: MIT
 
+## 👉 바로 설치
+
+1. 크롬에 [Violentmonkey](https://chromewebstore.google.com/detail/jinjaccalgkegednnccohejagnlnfdag) 설치 → 확장 프로그램 세부정보에서 **"사용자 스크립트 허용"** 켜기
+2. **[쇼츠 리미터 설치하기](https://raw.githubusercontent.com/knaae/shorts-limiter/main/src/shorts-limiter.user.js)** 클릭 → Violentmonkey 설치 화면에서 **설치**
+
+자세한 안내: [docs/INSTALL.md](docs/INSTALL.md)
+
 ## 구조
 
 ```
@@ -51,7 +58,7 @@ shorts-limiter/
 테스터용 안내는 [docs/INSTALL.md](docs/INSTALL.md) 를 보세요. 요약하면:
 
 1. Violentmonkey 설치 → 확장 프로그램 세부정보에서 **"사용자 스크립트 허용"** 켜기
-2. `src/shorts-limiter.user.js` 의 Raw 주소 열기 → 설치
+2. [설치 링크](https://raw.githubusercontent.com/knaae/shorts-limiter/main/src/shorts-limiter.user.js) 열기 → 설치
 
 `@updateURL` 이 설정되어 있어서, `@version` 을 올려 push하면 테스터 브라우저에 자동 업데이트됩니다.
 

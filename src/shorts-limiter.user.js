@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         Shorts Limiter
 // @name:ko      쇼츠 리미터
-// @namespace    https://github.com/YOUR_GITHUB_ID/shorts-limiter
-// @version      1.1.0
+// @namespace    https://github.com/knaae/shorts-limiter
+// @version      1.1.1
 // @description  유튜브 쇼츠를 고정 윈도우(T분마다 N개)로 제한하고, 내가 많이 본 것과 오래 본 것을 보여줍니다. 기록은 내 브라우저에만 저장됩니다.
-// @author       YOUR_NAME
+// @author       knaae
 // @license      MIT
 // @match        https://www.youtube.com/*
 // @grant        GM_getValue
@@ -12,13 +12,13 @@
 // @grant        GM_registerMenuCommand
 // @run-at       document-idle
 // @noframes
-// @supportURL   https://github.com/YOUR_GITHUB_ID/shorts-limiter/issues
-// @updateURL    https://raw.githubusercontent.com/YOUR_GITHUB_ID/shorts-limiter/main/src/shorts-limiter.user.js
-// @downloadURL  https://raw.githubusercontent.com/YOUR_GITHUB_ID/shorts-limiter/main/src/shorts-limiter.user.js
+// @supportURL   https://github.com/knaae/shorts-limiter/issues
+// @updateURL    https://raw.githubusercontent.com/knaae/shorts-limiter/main/src/shorts-limiter.user.js
+// @downloadURL  https://raw.githubusercontent.com/knaae/shorts-limiter/main/src/shorts-limiter.user.js
 // ==/UserScript==
 
 /*
- * Shorts Limiter v1.1.0
+ * Shorts Limiter v1.1.1
  * 실행 환경: Violentmonkey(오픈소스, 권장) / Tampermonkey
  *
  * 규칙
@@ -41,7 +41,7 @@
     META_DELAYS_MS: [1200, 3000, 6000], // 제목·채널을 다시 읽는 시점
     POLL_MS: 1000,                // 주소 변경 감지 보조 주기
   };
-  const VERSION = '1.1.0';
+  const VERSION = '1.1.1';
   const KEY_LOGS = 'sl_logs';
   const KEY_USER = 'sl_user';
   const KEY_INSTALLED = 'sl_installed_at';
@@ -593,10 +593,23 @@
     return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
   }
 
+  // 익명 내보내기에 포함할 항목 (시간·카운트 정보만)
+  const ANON_FIELDS = [
+    'id', 'userTag', 'enteredAt', 'leftAt', 'dwellMs', 'visibleMs',
+    'windowStart', 'windowMinutes', 'maxVideos', 'countBefore', 'scriptVersion', 'blocked',
+  ];
+
   function exportLogs(anonymize) {
     let logs = loadLogs();
     if (anonymize) {
-      logs = logs.map((l) => ({ ...l, title: '', channel: '', videoId: '' }));
+      // 지울 항목을 나열하지 않고, 내보낼 항목만 골라 담음 (허용 목록 방식)
+      // → 나중에 기록 항목이 늘어나도 제목·채널 같은 정보가 새어 나가지 않음
+      // v1.1.0까지는 oembedTitle(영상 제목)이 익명 내보내기에 남는 문제가 있었음
+      logs = logs.map((l) => {
+        const out = {};
+        for (const k of ANON_FIELDS) if (k in l) out[k] = l[k];
+        return { ...out, videoId: '', title: '', channel: '' }; // 분석기 호환용 빈 칸
+      });
     }
     const payload = {
       meta: {

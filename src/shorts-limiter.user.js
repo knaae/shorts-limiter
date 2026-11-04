@@ -2,7 +2,7 @@
 // @name         Shorts Limiter
 // @name:ko      쇼츠 리미터
 // @namespace    https://github.com/knaae/shorts-limiter
-// @version      1.1.1
+// @version      1.1.2
 // @description  유튜브 쇼츠를 고정 윈도우(T분마다 N개)로 제한하고, 내가 많이 본 것과 오래 본 것을 보여줍니다. 기록은 내 브라우저에만 저장됩니다.
 // @author       knaae
 // @license      MIT
@@ -18,7 +18,7 @@
 // ==/UserScript==
 
 /*
- * Shorts Limiter v1.1.1
+ * Shorts Limiter v1.1.2
  * 실행 환경: Violentmonkey(오픈소스, 권장) / Tampermonkey
  *
  * 규칙
@@ -41,7 +41,7 @@
     META_DELAYS_MS: [1200, 3000, 6000], // 제목·채널을 다시 읽는 시점
     POLL_MS: 1000,                // 주소 변경 감지 보조 주기
   };
-  const VERSION = '1.1.1';
+  const VERSION = '1.1.2';
   const KEY_LOGS = 'sl_logs';
   const KEY_USER = 'sl_user';
   const KEY_INSTALLED = 'sl_installed_at';
@@ -484,18 +484,35 @@
     return s;
   }
 
-  // 리포트가 열려 있는 동안 유튜브 단축키(↑↓, 스페이스 등)로 뒤의 쇼츠가 넘어가지 않게 막음
-  function onReportKey(e) {
+  // 리포트가 열려 있는 동안 키보드로 뒤의 쇼츠가 넘어가지 않게 막음
+  // v1.1.1까지는 이벤트 전달만 막아서(stopImmediatePropagation), 브라우저 기본 동작인
+  // "↑↓ 키로 쇼츠 목록 스크롤"은 막지 못했음 (11/4 시뮬레이션 F7에서 발견)
+  // → 기본 동작까지 막고(preventDefault), 스크립트 시작 때부터 window·document 양쪽에서 감시
+  const NAV_KEYS = new Set([
+    'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown',
+    'Home', 'End', ' ', 'Spacebar', 'j', 'k', 'J', 'K',
+  ]);
+
+  function guardKeys(e) {
     if (!report) return;
-    if (e.key === 'Escape') closeReport();
+    if (e.type === 'keydown' && e.key === 'Escape') closeReport();
+    else if (NAV_KEYS.has(e.key)) e.preventDefault();
     e.stopImmediatePropagation();
   }
+  ['keydown', 'keyup', 'keypress'].forEach((type) => {
+    window.addEventListener(type, guardKeys, true);
+    document.addEventListener(type, guardKeys, true);
+  });
+
+  let focusBeforeReport = null;
 
   function closeReport() {
-    window.removeEventListener('keydown', onReportKey, true);
     if (report) {
       report.remove();
       report = null;
+      // 리포트를 닫으면 원래 키보드 포커스로 되돌려 쇼츠 조작이 바로 되게 함
+      try { if (focusBeforeReport && focusBeforeReport.focus) focusBeforeReport.focus({ preventScroll: true }); } catch (_) { /* ignore */ }
+      focusBeforeReport = null;
     }
   }
 
@@ -509,8 +526,10 @@
       report.id = 'sl-report';
       report.addEventListener('click', (e) => { if (e.target === report) closeReport(); });
       report.addEventListener('wheel', (e) => e.stopPropagation());
-      window.addEventListener('keydown', onReportKey, true);
       document.body.appendChild(report);
+      // 쇼츠 플레이어가 잡고 있던 키보드 포커스를 리포트로 옮김
+      focusBeforeReport = document.activeElement;
+      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
     }
 
     const a = analyze(periodLogs(period), 3);
@@ -585,6 +604,9 @@
         { fontSize: '12px', color: RC.dim, lineHeight: '1.5' }),
     );
     report.replaceChildren(panel);
+    panel.tabIndex = -1;
+    panel.style.outline = 'none';
+    try { panel.focus({ preventScroll: true }); } catch (_) { /* ignore */ }
   }
 
   // ───────────────────────── 내보내기 ─────────────────────────
